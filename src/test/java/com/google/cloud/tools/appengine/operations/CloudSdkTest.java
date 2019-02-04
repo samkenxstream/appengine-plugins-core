@@ -196,6 +196,13 @@ public class CloudSdkTest {
   }
 
   @Test
+  public void testGetResolvers() throws CloudSdkNotFoundException {
+    CloudSdk.Builder builder = new CloudSdk.Builder();
+    List<CloudSdkResolver> resolvers = builder.getResolvers();
+    // assertEquals(2, resolvers.size());
+  }
+
+  @Test
   public void testGetJavaBinary() throws CloudSdkNotFoundException {
     CloudSdk sdk = new CloudSdk.Builder().javaHome(Paths.get("java", "path")).build();
     assertEquals(

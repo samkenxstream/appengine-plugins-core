@@ -28,7 +28,6 @@ import com.google.cloud.tools.appengine.operations.cloudsdk.PathResolver;
 import com.google.cloud.tools.appengine.operations.cloudsdk.serialization.CloudSdkVersion;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
-import com.google.common.collect.Lists;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -38,6 +37,7 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.ServiceLoader;
@@ -341,7 +341,14 @@ public class CloudSdk {
         // Explicitly specify classloader rather than use the Thread Context Class Loader
         ServiceLoader<CloudSdkResolver> services =
             ServiceLoader.load(CloudSdkResolver.class, getClass().getClassLoader());
-        resolvers = Lists.newArrayList(services);
+        resolvers = new ArrayList<>();
+        System.err.println("Iterating the service loader");
+        Iterator<CloudSdkResolver> iterator = services.iterator();
+        while (iterator.hasNext()) {
+          CloudSdkResolver next = iterator.next();
+          System.err.println("Next resolver: " + next.getClass());
+          resolvers.add(next);
+        }
         // Explicitly add the PATH-based resolver
         resolvers.add(new PathResolver());
       }
