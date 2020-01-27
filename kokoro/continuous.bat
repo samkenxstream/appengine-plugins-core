@@ -3,7 +3,6 @@
 REM Java 9 does not work with our builds right now, force java 8
 set JAVA_HOME=c:\program files\java\jdk1.8.0_152
 set PATH=%JAVA_HOME%\bin;%PATH%
-set CLOUDSDK_PYTHON=c:\python27\python.exe
 
 cd github/appengine-plugins-core
 
