@@ -73,7 +73,7 @@ public class AppYamlProjectStagingTest {
         ImmutableList.of(
             temporaryFolder.newFolder().toPath(), temporaryFolder.newFolder().toPath());
     stagingDirectory = temporaryFolder.newFolder().toPath();
-    artifact = temporaryFolder.newFile("artifact").toPath();
+    artifact = temporaryFolder.newFile("artifact.jar").toPath();
 
     dockerFile = dockerDirectory.resolve("Dockerfile");
     Files.createFile(dockerFile);
@@ -104,7 +104,7 @@ public class AppYamlProjectStagingTest {
   }
 
   @Test
-  public void testStageArchive_standardPath() throws IOException, AppEngineException {
+  public void testStageArchive_java11StandardPath() throws IOException, AppEngineException {
     Files.write(
         appEngineDirectory.resolve("app.yaml"),
         "runtime: java11\n".getBytes(StandardCharsets.UTF_8),
@@ -116,6 +116,60 @@ public class AppYamlProjectStagingTest {
 
     mock.stageArchive(config);
     verify(mock).stageStandardArchive(config);
+  }
+
+  @Test
+  public void testStageArchive_java11StandardBinaryPath() throws IOException, AppEngineException {
+    config =
+        AppYamlProjectStageConfiguration.builder()
+            .appEngineDirectory(appEngineDirectory)
+            .artifact(temporaryFolder.newFile("myscript.sh").toPath())
+            .stagingDirectory(stagingDirectory)
+            .extraFilesDirectories(extraFilesDirectories)
+            .build();
+
+    Files.write(
+        appEngineDirectory.resolve("app.yaml"),
+        "runtime: java11\nentrypoint: anything\n".getBytes(StandardCharsets.UTF_8),
+        StandardOpenOption.CREATE_NEW);
+
+    // mock to watch internal calls
+    AppYamlProjectStaging mock = Mockito.mock(AppYamlProjectStaging.class);
+    Mockito.doCallRealMethod().when(mock).stageArchive(config);
+
+    mock.stageArchive(config);
+    verify(mock).stageStandardBinary(config);
+  }
+
+  @Test
+  public void testStageArchive_java11BinaryWithoutEntrypoint()
+      throws IOException, AppEngineException {
+    Path badArtifact = temporaryFolder.newFile("myscript.sh").toPath();
+    config =
+        AppYamlProjectStageConfiguration.builder()
+            .appEngineDirectory(appEngineDirectory)
+            .artifact(badArtifact)
+            .stagingDirectory(stagingDirectory)
+            .extraFilesDirectories(extraFilesDirectories)
+            .build();
+
+    Files.write(
+        appEngineDirectory.resolve("app.yaml"),
+        "runtime: java11\n".getBytes(StandardCharsets.UTF_8),
+        StandardOpenOption.CREATE_NEW);
+
+    AppYamlProjectStaging testStaging = new AppYamlProjectStaging();
+
+    try {
+      testStaging.stageArchive(config);
+      fail();
+    } catch (AppEngineException ex) {
+      Assert.assertEquals(
+          "Cannot process application with runtime: java11, non-jar artifact: "
+              + badArtifact.toString()
+              + " must have a custom entrypoint defined in app.yaml",
+          ex.getMessage());
+    }
   }
 
   @Test
@@ -382,12 +436,30 @@ public class AppYamlProjectStagingTest {
   }
 
   @Test
+  public void testEnsureCustomEntrypoint_success() throws IOException, AppEngineException {
+    Path file = appEngineDirectory.resolve("app.yaml");
+    Files.createFile(file);
+    Files.write(file, "entrypoint: custom custom".getBytes(StandardCharsets.UTF_8));
+
+    Assert.assertTrue(AppYamlProjectStaging.hasCustomEntrypoint(config));
+  }
+
+  @Test
+  public void testEnsureCustomEntrypoint_fail() throws IOException, AppEngineException {
+    Path file = appEngineDirectory.resolve("app.yaml");
+    Files.createFile(file);
+    Files.write(file, "runtime: java".getBytes(StandardCharsets.UTF_8));
+
+    Assert.assertFalse(AppYamlProjectStaging.hasCustomEntrypoint(config));
+  }
+
+  @Test
   public void testCopyArtifactJarClasspath_noClasspath() throws IOException {
     AppYamlProjectStaging.copyArtifactJarClasspath(
-        AppYamlProjectStageConfiguration.builder(
-                appEngineDirectory,
-                Paths.get("src/test/resources/jars/libs/simpleLib.jar"),
-                stagingDirectory)
+        AppYamlProjectStageConfiguration.builder()
+            .appEngineDirectory(appEngineDirectory)
+            .artifact(Paths.get("src/test/resources/jars/libs/simpleLib.jar"))
+            .stagingDirectory(stagingDirectory)
             .build(),
         copyService);
 
@@ -399,10 +471,10 @@ public class AppYamlProjectStagingTest {
   @Test
   public void testCopyArtifactJarClasspath_withClasspathEntries() throws IOException {
     AppYamlProjectStaging.copyArtifactJarClasspath(
-        AppYamlProjectStageConfiguration.builder(
-                appEngineDirectory,
-                Paths.get("src/test/resources/jars/complexLib.jar"),
-                stagingDirectory)
+        AppYamlProjectStageConfiguration.builder()
+            .appEngineDirectory(appEngineDirectory)
+            .artifact(Paths.get("src/test/resources/jars/complexLib.jar"))
+            .stagingDirectory(stagingDirectory)
             .build(),
         copyService);
 
@@ -418,10 +490,10 @@ public class AppYamlProjectStagingTest {
   @Test
   public void testCopyArtifactJarClasspath_withMissingClasspathEntries() throws IOException {
     AppYamlProjectStaging.copyArtifactJarClasspath(
-        AppYamlProjectStageConfiguration.builder(
-                appEngineDirectory,
-                Paths.get("src/test/resources/jars/complexLibMissingEntryManifest.jar"),
-                stagingDirectory)
+        AppYamlProjectStageConfiguration.builder()
+            .appEngineDirectory(appEngineDirectory)
+            .artifact(Paths.get("src/test/resources/jars/complexLibMissingEntryManifest.jar"))
+            .stagingDirectory(stagingDirectory)
             .build(),
         copyService);
 
@@ -451,10 +523,10 @@ public class AppYamlProjectStagingTest {
     Files.createFile(simpleLibTarget);
 
     AppYamlProjectStaging.copyArtifactJarClasspath(
-        AppYamlProjectStageConfiguration.builder(
-                appEngineDirectory,
-                Paths.get("src/test/resources/jars/complexLib.jar"),
-                stagingDirectory)
+        AppYamlProjectStageConfiguration.builder()
+            .appEngineDirectory(appEngineDirectory)
+            .artifact(Paths.get("src/test/resources/jars/complexLib.jar"))
+            .stagingDirectory(stagingDirectory)
             .build(),
         copyService);
 

@@ -74,15 +74,30 @@ public class AppYamlProjectStaging {
       String runtime = findRuntime(config);
       if ("flex".equals(env)) {
         stageFlexibleArchive(config, runtime);
-      } else if ("java11".equals(runtime)) {
-        stageStandardArchive(config);
-      } else {
-        // I don't know how to deploy this
-        throw new AppEngineException(
-            "Cannot process application with runtime: "
-                + runtime
-                + (Strings.isNullOrEmpty(env) ? "" : " and env: " + env));
+        return;
       }
+      if ("java11".equals(runtime)) {
+        boolean isJar = config.getArtifact().getFileName().toString().endsWith(".jar");
+        if (isJar) {
+          stageStandardArchive(config);
+          return;
+        }
+        if (hasCustomEntrypoint(config)) {
+          stageStandardBinary(config);
+          return;
+        }
+        // I cannot deploy non-jars without custom entrypoints
+        throw new AppEngineException(
+            "Cannot process application with runtime: java11,"
+                + " non-jar artifact: "
+                + config.getArtifact().toString()
+                + " must have a custom entrypoint defined in app.yaml");
+      }
+      // I don't know how to deploy this
+      throw new AppEngineException(
+          "Cannot process application with runtime: "
+              + runtime
+              + (Strings.isNullOrEmpty(env) ? "" : " and env: " + env));
     } catch (IOException ex) {
       throw new AppEngineException(ex);
     }
@@ -106,6 +121,15 @@ public class AppYamlProjectStaging {
     copyAppEngineContext(config, copyService);
     copyArtifact(config, copyService);
     copyArtifactJarClasspath(config, copyService);
+  }
+
+  @VisibleForTesting
+  void stageStandardBinary(AppYamlProjectStageConfiguration config)
+      throws IOException, AppEngineException {
+    CopyService copyService = new CopyService();
+    copyExtraFiles(config, copyService);
+    copyAppEngineContext(config, copyService);
+    copyArtifact(config, copyService);
   }
 
   @VisibleForTesting
@@ -246,6 +270,20 @@ public class AppYamlProjectStaging {
         copyService.copyFileAndReplace(jarSrc, jarTarget);
       }
     }
+  }
+
+  @VisibleForTesting
+  // for non jar artifacts we want to ensure the entrypoint is custom
+  static boolean hasCustomEntrypoint(AppYamlProjectStageConfiguration config)
+      throws IOException, AppEngineException {
+    // verify that app.yaml that contains entrypoint:
+    Path appEngineDirectory = config.getAppEngineDirectory();
+    if (appEngineDirectory == null) {
+      throw new AppEngineException("Invalid Staging Configuration: missing App Engine directory");
+    }
+    Path appYamlFile = config.getAppEngineDirectory().resolve(APP_YAML);
+    AppYaml appYaml = AppYaml.parse(Files.newInputStream(appYamlFile));
+    return (appYaml.getEntrypoint() != null);
   }
 
   @VisibleForTesting
