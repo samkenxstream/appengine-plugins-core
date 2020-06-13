@@ -88,10 +88,9 @@ public class AppYamlProjectStaging {
         }
         // I cannot deploy non-jars without custom entrypoints
         throw new AppEngineException(
-            "Cannot process application with runtime: java11,"
-                + " non-jar artifact: "
-                + config.getArtifact().toString()
-                + " must have a custom entrypoint defined in app.yaml");
+            "Cannot process application with runtime: java11."
+                + " A custom entrypoint must be defined in your app.yaml for non-jar artifact: "
+                + config.getArtifact().toString());
       }
       // I don't know how to deploy this
       throw new AppEngineException(
@@ -277,13 +276,13 @@ public class AppYamlProjectStaging {
   static boolean hasCustomEntrypoint(AppYamlProjectStageConfiguration config)
       throws IOException, AppEngineException {
     // verify that app.yaml that contains entrypoint:
-    Path appEngineDirectory = config.getAppEngineDirectory();
-    if (appEngineDirectory == null) {
+    if (config.getAppEngineDirectory() == null) {
       throw new AppEngineException("Invalid Staging Configuration: missing App Engine directory");
     }
     Path appYamlFile = config.getAppEngineDirectory().resolve(APP_YAML);
-    AppYaml appYaml = AppYaml.parse(Files.newInputStream(appYamlFile));
-    return (appYaml.getEntrypoint() != null);
+    try (InputStream input = Files.newInputStream(appYamlFile)) {
+      return AppYaml.parse(input).getEntrypoint() != null;
+    }
   }
 
   @VisibleForTesting
