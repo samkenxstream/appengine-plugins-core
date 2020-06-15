@@ -65,7 +65,6 @@ public final class CloudLibraryTest {
     assertEquals(DOCUMENTATION, library.getDocumentation());
     assertEquals(DESCRIPTION, library.getDescription());
     assertEquals(TRANSPORT, Iterables.getOnlyElement(library.getTransports()));
-    assertEquals(ICON, library.getIcon());
 
     assertEquals(CLIENT_NAME, client.getName());
     assertEquals(CLIENT_LANGUAGE, client.getLanguage());
