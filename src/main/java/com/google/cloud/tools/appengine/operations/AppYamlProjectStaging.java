@@ -221,7 +221,6 @@ public class AppYamlProjectStaging {
 
   private static void copyArtifact(AppYamlProjectStageConfiguration config, CopyService copyService)
       throws IOException, AppEngineException {
-    // Copy the JAR/WAR file to staging.
     Path artifact = config.getArtifact();
     if (Files.exists(artifact)) {
       Path stagingDirectory = config.getStagingDirectory();
